@@ -45,7 +45,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /opt/microservices
+            cd /home/ubuntu/microservices
 
             aws ecr get-login-password --region eu-north-1 | \
             docker login --username AWS --password-stdin 744420879952.dkr.ecr.eu-north-1.amazonaws.com
