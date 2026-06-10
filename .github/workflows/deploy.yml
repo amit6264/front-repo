@@ -1,4 +1,4 @@
-name: Frontend CI/CD
+name: Frontend Deploy
 
 on:
   push:
@@ -6,50 +6,50 @@ on:
       - main
 
 jobs:
-
   deploy:
-
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Checkout
+      # Step 1 - Get Repository Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Configure AWS
-        uses: aws-actions/configure-aws-credentials@v4
+      # Step 2 - Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-north-1
+          node-version: 20
 
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v2
+      # Step 3 - Install Dependencies
+      - name: Install Dependencies
+        run: npm install
 
-      - name: Build Image
-        run: |
-          docker build -t frontend .
+      # Step 4 - Build Frontend Project
+      - name: Build Project
+        run: npm run build
 
-      - name: Tag Image
-        run: |
-          docker tag frontend:latest 744420879952.dkr.ecr.eu-north-1.amazonaws.com/frontend:latest
-
-      - name: Push Image
-        run: |
-          docker push 744420879952.dkr.ecr.eu-north-1.amazonaws.com/frontend:latest
-
-      - name: Deploy EC2
-        uses: appleboy/ssh-action@master
+      # Step 5 - Deploy Build Files to domene.no
+      - name: Deploy to domene.no FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd /home/ubuntu/microservices
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: ${{ secrets.FTP_PORT }}
 
-            aws ecr get-login-password --region eu-north-1 | \
-            docker login --username AWS --password-stdin 744420879952.dkr.ecr.eu-north-1.amazonaws.com
+          # React/Vite build folder
+          local-dir: ./build/
 
-            docker compose pull frontend
+          # Hosting public folder
+          server-dir: /public_html/
 
-            docker compose up -d frontend
+          # Prevent full folder cleanup
+          dangerous-clean-slate: false
+
+          # Ignore protected/system files
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .htaccess
+            .well-known/**
